@@ -56,7 +56,7 @@ class Editor:
         row = self.buffer.count("\n", 0, self.cursor)
 
         row_idx = self.buffer.rfind("\n", 0, self.cursor) + 1
-        col = self.cursor - row_idx + 1
+        col = self.cursor - row_idx
 
         return row, col
 
@@ -145,7 +145,6 @@ class Editor:
             return
 
         _, col = self._get_cursor_rowcol()
-        col -= 1
         visible = self._get_max_cols()
 
         if col < self.scroll_offset_x:
@@ -165,7 +164,7 @@ class Editor:
 
         start = sum(map(len, lines[: row + n]))
         line = lines[row + n].rstrip("\n")
-        self.cursor = start + min(col, len(line) + 1) - 1
+        self.cursor = start + min(col, len(line))
 
         if row + n >= self.scroll_offset_y + self._get_max_rows():
             self.scroll_offset_y = row + n - self._get_max_rows() + 1
@@ -307,11 +306,11 @@ class Editor:
                     max(0, self.scroll_offset_x),
                 )
                 _, col = self._get_cursor_rowcol()
-                if col - 1 < self.scroll_offset_x:
+                if col < self.scroll_offset_x:
                     self._hshift_cursor(self.scroll_offset_x - col + 1)
-                elif col > self.scroll_offset_x + self._get_max_cols():
+                elif col + 1 > self.scroll_offset_x + self._get_max_cols():
                     self._hshift_cursor(
-                        self.scroll_offset_x + self._get_max_cols() - col
+                        self.scroll_offset_x + self._get_max_cols() - col - 1
                     )
         else:
             self.scroll_offset_y -= int(event.y * self.config.scroll_sens_y)
