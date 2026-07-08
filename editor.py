@@ -306,11 +306,25 @@ class Editor:
                     max(0, max(map(len, self.buffer.splitlines(False))) - 1),
                     max(0, self.scroll_offset_x),
                 )
+                _, col = self._get_cursor_rowcol()
+                if col - 1 < self.scroll_offset_x:
+                    self._hshift_cursor(self.scroll_offset_x - col + 1)
+                elif col > self.scroll_offset_x + self._get_max_cols():
+                    self._hshift_cursor(
+                        self.scroll_offset_x + self._get_max_cols() - col
+                    )
         else:
             self.scroll_offset_y -= int(event.y * self.config.scroll_sens_y)
             self.scroll_offset_y = min(
                 self.buffer.count("\n"), max(0, self.scroll_offset_y)
             )
+            row, _ = self._get_cursor_rowcol()
+            if row < self.scroll_offset_y:
+                self._vshift_cursor(self.scroll_offset_y - row)
+            elif row + 1 > self.scroll_offset_y + self._get_max_rows():
+                self._vshift_cursor(
+                    self.scroll_offset_y + self._get_max_rows() - row - 1
+                )
 
     def _handle_mousebuttondown(self, event: Event) -> None:
         if event.button == 1:
