@@ -418,11 +418,10 @@ class Editor:
         return
 
     def _draw_text(self) -> None:
-        last_idx = 0
+        lines = self._get_buffer_lines()
+        last_idx = sum(len(l) for l in lines[: self.scroll_offset_y])
         for i, line in enumerate(
-            self.buffer.splitlines(True)[
-                self.scroll_offset_y : self.scroll_offset_y + self._get_max_rows()
-            ]
+            lines[self.scroll_offset_y : self.scroll_offset_y + self._get_max_rows()]
         ):
             if (
                 self.selection.display
