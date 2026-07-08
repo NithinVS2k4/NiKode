@@ -63,7 +63,9 @@ class Editor:
     def _resolve_mouse_pos(self, x: int, y: int) -> int:
         nlines = self.buffer.count("\n") + 1
 
-        line_idx = min(nlines - 1, self.scroll_offset_y + y // self.font.get_height())
+        line_idx = max(
+            0, min(nlines - 1, self.scroll_offset_y + y // self.font.get_height())
+        )
 
         lines = self._get_buffer_lines()
 
@@ -334,6 +336,8 @@ class Editor:
             self.selection.start = pos
             self.selection.end = pos
             self.cursor = pos
+            self._hshift_cursor(0)
+            self._vshift_cursor(0)
 
     def _handle_mousebuttonup(self, event: Event) -> None:
         if event.button == 1:
@@ -343,6 +347,8 @@ class Editor:
             self.selection.start = min(self.selection.anchor, pos)
             self.selection.end = max(self.selection.anchor, pos)
             self.cursor = pos
+            self._hshift_cursor(0)
+            self._vshift_cursor(0)
 
             if self.selection.start == self.selection.end:
                 self.selection.display = False
@@ -354,6 +360,8 @@ class Editor:
             self.selection.start = min(self.selection.anchor, pos)
             self.selection.end = max(self.selection.anchor, pos)
             self.cursor = pos
+            self._hshift_cursor(0)
+            self._vshift_cursor(0)
 
     def hande_event(self, event: Event):
         match event.type:
@@ -418,7 +426,7 @@ class Editor:
 
     def _draw_text(self) -> None:
         lines = self._get_buffer_lines()
-        last_idx = sum(len(l) for l in lines[: self.scroll_offset_y])
+        last_idx = sum(len(line) for line in lines[: self.scroll_offset_y])
         for i, line in enumerate(
             lines[self.scroll_offset_y : self.scroll_offset_y + self._get_max_rows()]
         ):
@@ -429,31 +437,37 @@ class Editor:
             ):
                 local_start = max(0, self.selection.start - last_idx)
                 local_end = min(len(line), self.selection.end - last_idx)
+                t1_text = line[self.scroll_offset_x : local_start].replace("\n", "")
+                t2_text = line[
+                    max(self.scroll_offset_x, local_start) : max(
+                        self.scroll_offset_x, local_end
+                    )
+                ].replace("\n", "")
+                t3_text = line[max(self.scroll_offset_x, local_end) :].replace("\n", "")
                 t1 = self.font.render(
-                    line[self.scroll_offset_x : local_start].replace("\n", ""),
+                    t1_text,
                     self.config.antialias_text,
                     self.config.theme.text_color,
                 )
                 t2 = self.font.render(
-                    line[local_start:local_end].replace("\n", ""),
+                    t2_text,
                     self.config.antialias_text,
                     self.config.theme.text_selection_color,
                 )
                 t3 = self.font.render(
-                    line[local_end:].replace("\n", ""),
+                    t3_text,
                     self.config.antialias_text,
                     self.config.theme.text_color,
                 )
-
+                t1_width = self.font.size(t1_text)[0]
+                t2_width = self.font.size(t2_text)[0]
                 pygame.draw.rect(
                     self.screen,
                     self.config.theme.bg_selection_color,
                     pygame.Rect(
-                        self.config.gutter_size + self.font.size(line[:local_start])[0],
+                        self.config.gutter_size + t1_width,
                         i * self.font.get_height(),
-                        self.font.size(line[local_start:local_end].replace("\n", ""))[
-                            0
-                        ],
+                        t2_width,
                         self.font.get_height(),
                     ),
                 )
@@ -463,15 +477,14 @@ class Editor:
                 self.screen.blit(
                     t2,
                     (
-                        self.config.gutter_size + self.font.size(line[:local_start])[0],
+                        self.config.gutter_size + t1_width,
                         i * self.font.get_height(),
                     ),
                 )
                 self.screen.blit(
                     t3,
                     (
-                        self.config.gutter_size
-                        + self.font.size(line[self.scroll_offset_x : local_end])[0],
+                        self.config.gutter_size + t1_width + t2_width,
                         i * self.font.get_height(),
                     ),
                 )
