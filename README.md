@@ -29,6 +29,5 @@ pip install pygame pyperclip
 ├── main.py     # entry point
 ├── stage.py    # main loop
 ├── editor.py   # Editor class, event handling, drawing
-├── utils.py    # config, colorscheme, and state dataclasses
-└── legacy.py   # my first attempt at making the editor before refactoring into the current structure
+└── utils.py    # config, colorscheme, and state dataclasses
 ```
