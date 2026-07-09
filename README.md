@@ -38,5 +38,5 @@ pip install pygame pyperclip
 - [ ] Make writing new themes easier
 - [X] *~~Move cursor when scrolling~~*
 - [X] *~~Scroll when selecting~~*
-- [ ] Implement a simple file explorer
+- [X] *~~Implement a simple file explorer~~*
 - [ ] Add docstrings and comments
