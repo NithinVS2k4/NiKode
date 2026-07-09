@@ -2,20 +2,6 @@ from dataclasses import dataclass, field
 
 import pygame
 
-__all__ = [
-    "Color",
-    "Key",
-    "Event",
-    "Surface",
-    "Font",
-    "PressedKeys",
-    "Theme",
-    "EditorConfig",
-    "RepeatKey",
-    "StatuslineState",
-    "SelectionState",
-]
-
 Color = tuple[int, int, int]
 Key = int
 Event = pygame.event.Event
@@ -25,7 +11,7 @@ PressedKeys = pygame.key.ScancodeWrapper
 
 
 @dataclass
-class Theme:
+class EditorTheme:
     bg_color: Color = (25, 23, 36)  # base #191724
     bg_selection_color: Color = (64, 61, 82)  # highlight_med #403d52
     line_color: Color = (33, 32, 46)  # highlight_low #21202e
@@ -55,7 +41,24 @@ class EditorConfig:
 
     statusline_unsaved_flair: str = " [*] "
     statusline_saved_flair: str = " "
-    theme: Theme = field(default_factory=Theme)
+    theme: EditorTheme = field(default_factory=EditorTheme)
+
+
+@dataclass
+class ExplorerTheme:
+    bg_color: Color = (25, 23, 36)
+    file_color: Color = (255, 255, 255)
+    directory_color: Color = (255, 0, 124)
+    connector_color: Color = (255, 255, 124)
+    line_color: Color = (33, 32, 46)
+
+
+@dataclass
+class ExplorerConfig:
+    font_name: str = "monaspicearnerdfontmono"
+    font_size: int = 15
+
+    theme: ExplorerTheme = field(default_factory=ExplorerTheme)
 
 
 class RepeatKey:
@@ -77,6 +80,13 @@ class RepeatKey:
 
 
 @dataclass
+class EditorState:
+    cursor_pos: int = 0
+    scroll_offset_x: int = 0
+    scroll_offset_y: int = 0
+
+
+@dataclass
 class StatuslineState:
     saved: bool = False
 
@@ -85,7 +95,7 @@ class StatuslineState:
     prompting: bool = False
 
     file_path: str = ""
-    cursor_pos: int = 0
+    saved_state: EditorState = field(default_factory=EditorState)
 
     def get_flair(self):
         if self.saved:

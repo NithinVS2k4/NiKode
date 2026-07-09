@@ -50,9 +50,14 @@ class Editor:
         self.selection: SelectionState = SelectionState()
         self.screen: Surface = surface
 
-        self.file_path: str | None = None
+        self.file_path: Path | None = None
 
     def _get_cursor_rowcol(self) -> tuple[int, int]:
+        if self.status.prompting:
+            row = 0
+            col = self.cursor + len(self.status.get_flair())
+            return row, col
+
         row = self.buffer.count("\n", 0, self.cursor)
 
         row_idx = self.buffer.rfind("\n", 0, self.cursor) + 1
@@ -81,6 +86,8 @@ class Editor:
         )
 
     def _get_max_cols(self):
+        if self.status.prompting:
+            return self.screen.get_width() // self.font.size(" ")[0]
         return int(
             (self.screen.get_width() - self.config.gutter_size)
             // self.font.size(" ")[0]
@@ -137,9 +144,9 @@ class Editor:
 
         if self.status.prompting:
             visible = self._get_max_cols()
-            col = self.cursor + len(self.status.get_flair())
+            _, col = self._get_cursor_rowcol()
 
-            if col < self.scroll_offset_x:
+            if col < self.scroll_offset_x + len(self.status.get_flair()):
                 self.scroll_offset_x = self.cursor
             elif col >= self.scroll_offset_x + visible:
                 self.scroll_offset_x = col - visible + 1
@@ -179,8 +186,7 @@ class Editor:
         self._vshift_cursor(0)
         self.status.saved = False
 
-    def _save_file(self, file_path: str):
-        path = Path(file_path)
+    def _save_file(self, path: Path):
 
         if not path.is_absolute():
             path = Path.cwd() / path
@@ -190,10 +196,9 @@ class Editor:
         path.write_text(self.buffer)
         self.status.saved = True
         if self.file_path is None:
-            self.file_path = file_path
+            self.file_path = path
 
-    def _load_file(self, file_path: str) -> None:
-        path = Path(file_path)
+    def _load_file(self, path: Path) -> None:
 
         if not path.is_absolute():
             path = Path.cwd() / path
@@ -203,7 +208,7 @@ class Editor:
 
         path.touch(exist_ok=True)
 
-        self.file_path = file_path
+        self.file_path = path
         self.status.saved = True
         with open(path, "r") as f:
             self.buffer = f.read()
@@ -213,13 +218,17 @@ class Editor:
         if event.key == pygame.K_RETURN:
             if self.status.prompting:
                 self.status.prompting = False
-                self.cursor = self.status.cursor_pos
-                self.status.cursor_pos = 0
+
+                self.cursor = self.status.saved_state.cursor_pos
+                self.scroll_offset_x = self.status.saved_state.scroll_offset_x
+                self.scroll_offset_y = self.status.saved_state.scroll_offset_y
+
                 if self.status.prompt_saving:
-                    self._save_file(self.status.file_path)
+                    self._save_file(Path(self.status.file_path))
                     self.status.prompt_saving = False
+
                 elif self.status.prompt_loading:
-                    self._load_file(self.status.file_path)
+                    self._load_file(Path(self.status.file_path))
                     self.status.prompt_loading = False
             else:
                 self._insert_text("\n")
@@ -285,8 +294,14 @@ class Editor:
                 self.status.prompt_saving = True
                 self.status.prompting = True
                 self.status.file_path = ""
-                self.status.cursor_pos = self.cursor
+
+                self.status.saved_state.cursor_pos = self.cursor
+                self.status.saved_state.scroll_offset_x = self.scroll_offset_x
+                self.status.saved_state.scroll_offset_y = self.scroll_offset_y
+
                 self.cursor = 0
+                self.scroll_offset_x = 0
+                self.scroll_offset_y = 0
             else:
                 self._save_file(self.file_path)
 
@@ -296,38 +311,65 @@ class Editor:
             self.status.prompt_loading = True
             self.status.prompting = True
             self.status.file_path = ""
-            self.status.cursor_pos = self.cursor
+
+            self.status.saved_state.cursor_pos = 0
+            self.status.saved_state.scroll_offset_x = 0
+            self.status.saved_state.scroll_offset_y = 0
+
             self.cursor = 0
+            self.scroll_offset_x = 0
+            self.scroll_offset_y = 0
 
     def _handle_mousewheel(self, event: Event) -> None:
         if abs(event.x) > abs(event.y):
-            if self.buffer:
+            if self.buffer or self.status.prompting:
                 self.scroll_offset_x += int(event.x * self.config.scroll_sens_x)
-                self.scroll_offset_x = min(
-                    max(0, max(map(len, self.buffer.splitlines(False))) - 1),
-                    max(0, self.scroll_offset_x),
-                )
-                _, col = self._get_cursor_rowcol()
-                if col < self.scroll_offset_x:
-                    self._hshift_cursor(self.scroll_offset_x - col + 1)
-                elif col + 1 > self.scroll_offset_x + self._get_max_cols():
-                    self._hshift_cursor(
-                        self.scroll_offset_x + self._get_max_cols() - col - 1
+                if self.status.prompting:
+                    self.scroll_offset_x = min(
+                        len(self.status.file_path), max(0, self.scroll_offset_x)
                     )
+
+                    _, col = self._get_cursor_rowcol()
+                    if col < self.scroll_offset_x + len(self.status.get_flair()):
+                        self._hshift_cursor(
+                            self.scroll_offset_x + len(self.status.get_flair()) - col
+                        )
+                    elif col >= self.scroll_offset_x + self._get_max_cols():
+                        self._hshift_cursor(
+                            self.scroll_offset_x + self._get_max_cols() - col
+                        )
+
+                else:
+                    self.scroll_offset_x = min(
+                        max(0, max(map(len, self.buffer.splitlines(False))) - 1),
+                        max(0, self.scroll_offset_x),
+                    )
+
+                    _, col = self._get_cursor_rowcol()
+                    if col < self.scroll_offset_x:
+                        self._hshift_cursor(self.scroll_offset_x - col + 1)
+                    elif col + 1 > self.scroll_offset_x + self._get_max_cols():
+                        self._hshift_cursor(
+                            self.scroll_offset_x + self._get_max_cols() - col - 1
+                        )
         else:
-            self.scroll_offset_y -= int(event.y * self.config.scroll_sens_y)
-            self.scroll_offset_y = min(
-                self.buffer.count("\n"), max(0, self.scroll_offset_y)
-            )
-            row, _ = self._get_cursor_rowcol()
-            if row < self.scroll_offset_y:
-                self._vshift_cursor(self.scroll_offset_y - row)
-            elif row + 1 > self.scroll_offset_y + self._get_max_rows():
-                self._vshift_cursor(
-                    self.scroll_offset_y + self._get_max_rows() - row - 1
+            if not self.status.prompting:
+                self.scroll_offset_y -= int(event.y * self.config.scroll_sens_y)
+                self.scroll_offset_y = min(
+                    self.buffer.count("\n"), max(0, self.scroll_offset_y)
                 )
+                row, _ = self._get_cursor_rowcol()
+                if row < self.scroll_offset_y:
+                    self._vshift_cursor(self.scroll_offset_y - row)
+                elif row + 1 > self.scroll_offset_y + self._get_max_rows():
+                    self._vshift_cursor(
+                        self.scroll_offset_y + self._get_max_rows() - row - 1
+                    )
 
     def _handle_mousebuttondown(self, event: Event) -> None:
+        if self.status.prompting:
+            return
+
         if event.button == 1:
             pos = self._resolve_mouse_pos(event.pos[0], event.pos[1])
             self.selection.selecting = True
@@ -340,6 +382,9 @@ class Editor:
             self._vshift_cursor(0)
 
     def _handle_mousebuttonup(self, event: Event) -> None:
+        if self.status.prompting:
+            return
+
         if event.button == 1:
             self.selection.selecting = False
 
@@ -354,6 +399,9 @@ class Editor:
                 self.selection.display = False
 
     def _handle_mousemotion(self, event):
+        if self.status.prompting:
+            return
+
         if self.selection.selecting:
             pos = self._resolve_mouse_pos(event.pos[0], event.pos[1])
 
@@ -363,7 +411,7 @@ class Editor:
             self._hshift_cursor(0)
             self._vshift_cursor(0)
 
-    def hande_event(self, event: Event):
+    def handle_event(self, event: Event):
         match event.type:
             case pygame.TEXTINPUT:
                 self._handle_textinput(event)
@@ -406,8 +454,8 @@ class Editor:
 
         if self.status.prompting:
             line = (
-                self.buffer.count("\n", 0, self.status.cursor_pos)
-                - self.scroll_offset_y
+                self.buffer.count("\n", 0, self.status.saved_state.cursor_pos)
+                - self.status.saved_state.scroll_offset_y
             )
         else:
             line = self.buffer.count("\n", 0, self.cursor) - self.scroll_offset_y
@@ -425,10 +473,17 @@ class Editor:
         return
 
     def _draw_text(self) -> None:
+        if self.status.prompting:
+            scroll_offset_x = self.status.saved_state.scroll_offset_x
+            scroll_offset_y = self.status.saved_state.scroll_offset_y
+        else:
+            scroll_offset_x = self.scroll_offset_x
+            scroll_offset_y = self.scroll_offset_y
+
         lines = self._get_buffer_lines()
-        last_idx = sum(len(line) for line in lines[: self.scroll_offset_y])
+        last_idx = sum(len(line) for line in lines[:scroll_offset_y])
         for i, line in enumerate(
-            lines[self.scroll_offset_y : self.scroll_offset_y + self._get_max_rows()]
+            lines[scroll_offset_y : scroll_offset_y + self._get_max_rows()]
         ):
             if (
                 self.selection.display
@@ -437,13 +492,15 @@ class Editor:
             ):
                 local_start = max(0, self.selection.start - last_idx)
                 local_end = min(len(line), self.selection.end - last_idx)
-                t1_text = line[self.scroll_offset_x : local_start].replace("\n", "")
+
+                t1_text = line[scroll_offset_x:local_start].replace("\n", "")
+
                 t2_text = line[
-                    max(self.scroll_offset_x, local_start) : max(
-                        self.scroll_offset_x, local_end
-                    )
+                    max(scroll_offset_x, local_start) : max(scroll_offset_x, local_end)
                 ].replace("\n", "")
-                t3_text = line[max(self.scroll_offset_x, local_end) :].replace("\n", "")
+
+                t3_text = line[max(scroll_offset_x, local_end) :].replace("\n", "")
+
                 t1 = self.font.render(
                     t1_text,
                     self.config.antialias_text,
@@ -459,8 +516,10 @@ class Editor:
                     self.config.antialias_text,
                     self.config.theme.text_color,
                 )
+
                 t1_width = self.font.size(t1_text)[0]
                 t2_width = self.font.size(t2_text)[0]
+
                 pygame.draw.rect(
                     self.screen,
                     self.config.theme.bg_selection_color,
@@ -471,6 +530,7 @@ class Editor:
                         self.font.get_height(),
                     ),
                 )
+
                 self.screen.blit(
                     t1, (self.config.gutter_size, i * self.font.get_height())
                 )
@@ -492,31 +552,35 @@ class Editor:
             else:
                 text = self.font.render(
                     (
-                        line[self.scroll_offset_x :]
+                        line[scroll_offset_x:]
                         if line and line[-1] != "\n"
-                        else line[self.scroll_offset_x : -1]
+                        else line[scroll_offset_x:-1]
                     ),
                     self.config.antialias_text,
                     self.config.theme.text_color,
                 )
+
                 self.screen.blit(
                     text, (self.config.gutter_size, i * self.font.get_height())
                 )
+
             last_idx += len(line)
 
     def _draw_gutter(self) -> None:
+        if self.status.prompting:
+            cursor = self.status.saved_state.cursor_pos
+            scroll_offset_y = self.status.saved_state.scroll_offset_y
+        else:
+            cursor = self.cursor
+            scroll_offset_y = self.scroll_offset_y
+
         pygame.draw.rect(
             self.screen,
             self.config.theme.gutter_color,
             pygame.Rect(0, 0, self.config.gutter_size, self.screen.get_height()),
         )
-        if self.status.prompting:
-            cursor_line = (
-                self.buffer.count("\n", 0, self.status.cursor_pos)
-                - self.scroll_offset_y
-            )
-        else:
-            cursor_line = self.buffer.count("\n", 0, self.cursor) - self.scroll_offset_y
+        cursor_line = self.buffer.count("\n", 0, cursor) - scroll_offset_y
+
         for i in range(
             1,
             min(
@@ -524,7 +588,7 @@ class Editor:
             )
             + 1,
         ):
-            line_no = f"{self.scroll_offset_y + i}"
+            line_no = f"{scroll_offset_y + i}"
             text = self.font.render(
                 line_no,
                 self.config.antialias_text,
@@ -556,7 +620,7 @@ class Editor:
         if self.status.prompting:
             statusline_text = ""
             statusline_text += self.status.get_flair()
-            statusline_text += self.status.file_path
+            statusline_text += self.status.file_path[self.scroll_offset_x :]
             text = self.font.render(
                 statusline_text,
                 self.config.antialias_text,
@@ -579,7 +643,7 @@ class Editor:
         if self.file_path is None:
             statusline_text += "Unknown file"
         else:
-            statusline_text += self.file_path
+            statusline_text += str(self.file_path)
 
         text = self.font.render(
             statusline_text,
@@ -597,7 +661,7 @@ class Editor:
 
     def _draw_cursor(self) -> None:
         if self.status.prompting:
-            column = self.cursor + 5
+            column = self.cursor + len(self.status.get_flair())
             screen_column = column - self.scroll_offset_x
             x = screen_column * self.font.size(" ")[0]
 
