@@ -22,7 +22,7 @@ pygame.font.init()
 
 
 class Editor:
-    def __init__(self, config: EditorConfig, surface: Surface):
+    def __init__(self, config: EditorConfig, surface: Surface) -> None:
         self.buffer: str = ""
         self.cursor: int = 0
         self.scroll_offset_x: int = 0
@@ -85,7 +85,7 @@ class Editor:
             ),
         )
 
-    def _get_max_cols(self):
+    def _get_max_cols(self) -> int:
         if self.status.prompting:
             return self.screen.get_width() // self.font.size(" ")[0]
         return int(
@@ -93,13 +93,13 @@ class Editor:
             // self.font.size(" ")[0]
         )
 
-    def _get_max_rows(self):
+    def _get_max_rows(self) -> int:
         return int(
             (self.screen.get_height() - self.config.statusline_height)
             // self.font.get_height()
         )
 
-    def _get_buffer_lines(self):
+    def _get_buffer_lines(self) -> list[str]:
         lines = self.buffer.splitlines(True)
         if not lines or lines[-1][-1] == "\n":
             lines = lines + [""]
@@ -118,7 +118,7 @@ class Editor:
         self.buffer = self.buffer[: self.cursor] + text + self.buffer[self.cursor :]
         self.cursor += len(text)
 
-    def _backspace_text(self):
+    def _backspace_text(self) -> None:
         if self.cursor == 0:
             return
 
@@ -186,7 +186,7 @@ class Editor:
         self._vshift_cursor(0)
         self.status.saved = False
 
-    def _save_file(self, path: Path):
+    def _save_file(self, path: Path) -> None:
 
         if not path.is_absolute():
             path = Path.cwd() / path
@@ -398,7 +398,7 @@ class Editor:
             if self.selection.start == self.selection.end:
                 self.selection.display = False
 
-    def _handle_mousemotion(self, event):
+    def _handle_mousemotion(self, event) -> None:
         if self.status.prompting:
             return
 
@@ -411,7 +411,7 @@ class Editor:
             self._hshift_cursor(0)
             self._vshift_cursor(0)
 
-    def handle_event(self, event: Event):
+    def handle_event(self, event: Event) -> None:
         match event.type:
             case pygame.TEXTINPUT:
                 self._handle_textinput(event)
@@ -426,7 +426,7 @@ class Editor:
             case pygame.MOUSEMOTION:
                 self._handle_mousemotion(event)
 
-    def tick(self):
+    def tick(self) -> None:
         for key in self.repeat.keys():
             self.repeat[key].tick()
 
@@ -697,7 +697,7 @@ class Editor:
         )
         return
 
-    def draw_ui(self):
+    def draw_ui(self) -> None:
         self._draw_bg()
         self._draw_text()
         self._draw_gutter()

@@ -10,7 +10,7 @@ from explorer import Explorer, ExplorerConfig
 
 
 class Stage:
-    def __init__(self):
+    def __init__(self) -> None:
         pygame.init()
         pygame.font.init()
         self.screen = pygame.display.set_mode(
@@ -22,7 +22,7 @@ class Stage:
 
         self.active = self.explorer
 
-    def run(self):
+    def run(self) -> None:
         running = True
         clock = pygame.time.Clock()
 

@@ -21,7 +21,7 @@ import pygame
 
 
 class Explorer:
-    def __init__(self, config: ExplorerConfig, surface: Surface):
+    def __init__(self, config: ExplorerConfig, surface: Surface) -> None:
         self.active_line: int = 0
         self.scroll_offset_x: int = 0
         self.scroll_offset_y: int = 0

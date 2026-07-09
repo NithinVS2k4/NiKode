@@ -63,7 +63,7 @@ class ExplorerConfig:
 
 
 class RepeatKey:
-    def __init__(self, delay_frames: int = 30):
+    def __init__(self, delay_frames: int = 30) -> None:
         self.delay: int = delay_frames
         self.press_flag: bool = False
         self.frame_count: int = 0
@@ -98,7 +98,7 @@ class StatuslineState:
     file_path: str = ""
     saved_state: EditorState = field(default_factory=EditorState)
 
-    def get_flair(self):
+    def get_flair(self) -> str:
         if self.saved:
             return " "
         else:
@@ -115,37 +115,37 @@ class SelectionState:
 
 
 class File:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self.path = path
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.path.name
 
 
 class Directory:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self.path: Path = path
         self.opened: bool = False
         self.children: list[Directory | File] | None = None
 
-    def update_children(self):
+    def update_children(self) -> None:
         self.children = [
             Directory(p) if p.is_dir() else File(p) for p in self.path.iterdir()
         ]
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.path.name
 
-    def open(self):
+    def open(self) -> None:
         self.opened = True
         self.update_children()
 
-    def close(self):
+    def close(self) -> None:
         self.opened = False
 
-    def toggle(self):
+    def toggle(self) -> None:
         if self.opened:
             self.close()
         else:
