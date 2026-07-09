@@ -1,67 +1,23 @@
 import os
-import pathlib
 from pathlib import Path
 
-from pygame.constants import K_UP
-
 from utils import (
+    Directory,
     Event,
     ExplorerConfig,
+    File,
     Font,
     Key,
+    Node,
     PressedKeys,
     RepeatKey,
-    SelectionState,
-    StatuslineState,
     Surface,
+    Tree,
+    TreeEntry,
 )
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame
-
-
-class File:
-    def __init__(self, path: Path):
-        self.path = path
-
-    @property
-    def name(self):
-        return self.path.name
-
-
-class Directory:
-    def __init__(self, path: Path):
-        self.path: Path = path
-        self.opened: bool = False
-        self.children: list[Directory | File] | None = None
-
-    def update_children(self):
-        self.children = [
-            Directory(p) if p.is_dir() else File(p) for p in self.path.iterdir()
-        ]
-
-    @property
-    def name(self):
-        return self.path.name
-
-    def open(self):
-        self.opened = True
-        self.update_children()
-
-    def close(self):
-        self.opened = False
-
-    def toggle(self):
-        if self.opened:
-            self.close()
-        else:
-            self.open()
-
-
-Node = Directory | File
-Depth = int
-TreeEntry = tuple[Node, Depth]
-Tree = list[TreeEntry]
 
 
 class Explorer:

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pygame
 
@@ -111,3 +112,47 @@ class SelectionState:
     anchor: int = 0
     start: int = 0
     end: int = 0
+
+
+class File:
+    def __init__(self, path: Path):
+        self.path = path
+
+    @property
+    def name(self):
+        return self.path.name
+
+
+class Directory:
+    def __init__(self, path: Path):
+        self.path: Path = path
+        self.opened: bool = False
+        self.children: list[Directory | File] | None = None
+
+    def update_children(self):
+        self.children = [
+            Directory(p) if p.is_dir() else File(p) for p in self.path.iterdir()
+        ]
+
+    @property
+    def name(self):
+        return self.path.name
+
+    def open(self):
+        self.opened = True
+        self.update_children()
+
+    def close(self):
+        self.opened = False
+
+    def toggle(self):
+        if self.opened:
+            self.close()
+        else:
+            self.open()
+
+
+Node = Directory | File
+Depth = int
+TreeEntry = tuple[Node, Depth]
+Tree = list[TreeEntry]
