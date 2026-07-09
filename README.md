@@ -11,7 +11,7 @@ python main.py
 ## Features
 
 - Basic text editing (insert, backspace, arrow keys)
-- Simple file explorer for directory navigation
+- Simple file explorer for directory navigation. Toggle with Ctrl/Cmd + T 
 - Mouse-based text selection and navigation
 - Copy to clipboard (Ctrl/Cmd + C)
 - Save (Ctrl/Cmd + S) and open (Ctrl/Cmd + O) files
