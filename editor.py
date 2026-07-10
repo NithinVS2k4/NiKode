@@ -251,10 +251,12 @@ class Editor:
         elif event.key == pygame.K_LEFT:
             self.repeat[event.key].press()
             self._hshift_cursor(-1)
+            self._vshift_cursor(0)
 
         elif event.key == pygame.K_RIGHT:
             self.repeat[event.key].press()
             self._hshift_cursor(1)
+            self._vshift_cursor(0)
 
         elif event.key == pygame.K_UP:
             self.repeat[event.key].press()
@@ -439,9 +441,11 @@ class Editor:
 
         if keys[pygame.K_LEFT] and self.repeat[pygame.K_LEFT].check():
             self._hshift_cursor(-1)
+            self._vshift_cursor(0)
 
         if keys[pygame.K_RIGHT] and self.repeat[pygame.K_RIGHT].check():
             self._hshift_cursor(1)
+            self._vshift_cursor(0)
 
         if keys[pygame.K_UP] and self.repeat[pygame.K_UP].check():
             self._vshift_cursor(-1)
