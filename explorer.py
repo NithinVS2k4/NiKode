@@ -54,17 +54,19 @@ class Explorer:
     def _flatten(self, node: Node, depth=0) -> Tree:
         result: Tree = [(node, depth)]
 
+        # We only proceed if the directory has been opened
         if isinstance(node, File) or not node.opened:
             return result
 
         if node.children is None:
             node.update_children()
+
+            # To make linter happy
             assert node.children is not None, "Error updating children."
 
-        children_sorted = sorted(
-            node.children, key=lambda x: (isinstance(x, File), x.name.lower())
-        )
-        for child in children_sorted:
+        # We recursively add the children to list in result
+        # It is essentially a pre-order traversal of the tree
+        for child in node.children:
             result += self._flatten(child, depth=depth + 1)
         return result
 
@@ -78,7 +80,7 @@ class Explorer:
             if isinstance(item, Directory):
                 item.toggle()
                 self.tree = self._flatten(self.root)
-            if isinstance(item, File):
+            elif isinstance(item, File):
                 self.selected = True
                 self.file_path = item.path
 
@@ -110,6 +112,8 @@ class Explorer:
             self.repeat[key].tick()
 
     def handle_pressed_keys(self, keys: PressedKeys) -> None:
+        # If key is currently pressed and the delay is over, trigger the event
+
         if keys[pygame.K_UP] and self.repeat[pygame.K_UP].check():
             self._shift_line(-1)
 
@@ -118,6 +122,8 @@ class Explorer:
 
     def _draw_bg(self) -> None:
         self.screen.fill(self.config.theme.bg_color)
+
+        # Current line highlight
         pygame.draw.rect(
             self.screen,
             self.config.theme.line_color,
@@ -130,19 +136,65 @@ class Explorer:
         )
 
     def _draw_tree(self) -> None:
+
+        # Unfinished depths is the collection of depths that
+        # still have siblings left to be drawn.
+        # It is used for handling the indent characters
+        unfinished_depths = {0}
+
         for i, (item, depth) in enumerate(self.tree):
-            indent = " " * 4 * depth
+
+            # If a new set of children of a certain depth has arrived,
+            # add it to the unfinished depths
+            if depth not in unfinished_depths:
+                unfinished_depths.add(depth)
+
+            indent = ""
+            for d in range(1, depth):
+
+                # If depth d is unfinished, we need to draw the vertical character
+                # to connect with its siblings later down below
+                # Note that the current depth is excluded
+                if d in unfinished_depths:
+                    indent += "│  "
+                else:
+                    indent += "   "
+
+            if item.parent is not None:
+                siblings = item.parent.children
+
+                # To make linter happy
+                if siblings is None:
+                    raise ValueError("Node has no parent")
+
+                if siblings.index(item) == len(siblings) - 1:
+                    # Last item of the depth. This depth is finished for now.
+                    indent += "└─ "
+                    unfinished_depths.remove(depth)
+                else:
+                    indent += "├─ "
+
+            # Draw the connectors
+            indent_ren = self.font.render(
+                indent, True, self.config.theme.connector_color
+            )
+            self.screen.blit(indent_ren, (0, i * self.font.get_height()))
+
             if isinstance(item, Directory):
                 text = self.font.render(
-                    indent + "[D] " + item.name, True, self.config.theme.directory_color
+                    " " + item.name, True, self.config.theme.directory_color
                 )
-                self.screen.blit(text, (0, i * self.font.get_height()))
+                self.screen.blit(
+                    text, (self.font.size(indent)[0], i * self.font.get_height())
+                )
 
             else:
                 text = self.font.render(
-                    indent + "[F] " + item.name, True, self.config.theme.file_color
+                    "󰈙 " + item.name, True, self.config.theme.file_color
                 )
-                self.screen.blit(text, (0, i * self.font.get_height()))
+                self.screen.blit(
+                    text, (self.font.size(indent)[0], i * self.font.get_height())
+                )
 
     def draw_ui(self) -> None:
         self._draw_bg()

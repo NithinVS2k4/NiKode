@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Self
 
 import pygame
 
@@ -114,9 +115,14 @@ class SelectionState:
     end: int = 0
 
 
+class Directory:
+    pass
+
+
 class File:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, parent: Directory | None = None) -> None:
         self.path = path
+        self.parent = parent
 
     @property
     def name(self) -> str:
@@ -124,15 +130,31 @@ class File:
 
 
 class Directory:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, parent: Self | None = None) -> None:
         self.path: Path = path
         self.opened: bool = False
         self.children: list[Directory | File] | None = None
+        self.parent: Self | None = parent
 
     def update_children(self) -> None:
-        self.children = [
-            Directory(p) if p.is_dir() else File(p) for p in self.path.iterdir()
+        children = [
+            Directory(p, self) if p.is_dir() else File(p, self)
+            for p in self.path.iterdir()
         ]
+
+        self.children = sorted(
+            children, key=lambda x: (isinstance(x, File), x.name.lower())
+        )
+
+    def get_child(self, name: str) -> Self | File | None:
+        if self.children is None:
+            self.update_children()
+            if self.children is None:
+                raise ValueError("Child not found")
+        for child in self.children:
+            if child.name == name:
+                return child
+        return None
 
     @property
     def name(self) -> str:
