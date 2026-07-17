@@ -22,7 +22,7 @@ class EditorTheme:
     cursor_color: Color = (235, 188, 186)  # rose #ebbcba
     gutter_color: Color = (31, 29, 46)  # surface #1f1d2e
     gutter_line_no_color: Color = (110, 106, 134)  # muted #6e6a86
-    gutter_current_line_no_color: Color = (196, 167, 231)  # iris #c4a7e7
+    gutter_current_line_no_color: Color = (156, 127, 191)  # iris #c4a7e7
     statusline_color: Color = (31, 29, 46)  # surface #1f1d2e
     statusline_text_color: Color = (144, 140, 170)  # subtle #908caa
 
@@ -49,9 +49,9 @@ class EditorConfig:
 @dataclass
 class ExplorerTheme:
     bg_color: Color = (25, 23, 36)
-    file_color: Color = (255, 255, 255)
-    directory_color: Color = (255, 0, 124)
-    connector_color: Color = (255, 255, 124)
+    file_color: Color = (224, 222, 244)
+    directory_color: Color = (156, 127, 191)
+    connector_color: Color = (156, 127, 191)
     line_color: Color = (33, 32, 46)
 
 

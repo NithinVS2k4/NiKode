@@ -60,6 +60,7 @@ class Editor:
 
         row = self.buffer.count("\n", 0, self.cursor)
 
+        # Find the index of the first character in the row in the buffer
         row_idx = self.buffer.rfind("\n", 0, self.cursor) + 1
         col = self.cursor - row_idx
 
@@ -68,6 +69,7 @@ class Editor:
     def _resolve_mouse_pos(self, x: int, y: int) -> int:
         nlines = self.buffer.count("\n") + 1
 
+        # (y // font_height) gives the line index relative to the screen
         line_idx = max(
             0, min(nlines - 1, self.scroll_offset_y + y // self.font.get_height())
         )
@@ -76,16 +78,20 @@ class Editor:
 
         line = lines[line_idx]
         line_start_idx = sum(map(len, lines[:line_idx]))
+
+        lower_lim = 0
+        # If it is the last line in the buffer, we let the cursor be at the very end of line
+        upper_lim = len(line) - 1 if line and line[-1] == "\n" else len(line)
+
+        col = (x - self.config.gutter_size) // (self.font.size(" ")[0])
+
         return line_start_idx + max(
-            0,
-            min(
-                len(line) - 1 if line and line[-1] == "\n" else len(line),
-                self.scroll_offset_x
-                + int((x - self.config.gutter_size) // (self.font.size(" ")[0])),
-            ),
+            lower_lim,
+            min(upper_lim, self.scroll_offset_x + col),
         )
 
     def _get_max_cols(self) -> int:
+        # Statusline doesn't have a gutter to its left
         if self.status.prompting:
             return self.screen.get_width() // self.font.size(" ")[0]
         return int(
@@ -101,6 +107,7 @@ class Editor:
 
     def _get_buffer_lines(self) -> list[str]:
         lines = self.buffer.splitlines(True)
+        # To avoid omitting any empty line at the end of buffer
         if not lines or lines[-1][-1] == "\n":
             lines = lines + [""]
         return lines
@@ -180,12 +187,6 @@ class Editor:
         elif row + n <= self.scroll_offset_y:
             self.scroll_offset_y = row + n
 
-    def _handle_textinput(self, event: Event) -> None:
-        self._insert_text(event.text)
-        self._hshift_cursor(0)
-        self._vshift_cursor(0)
-        self.status.saved = False
-
     def _save_file(self, path: Path) -> None:
 
         if not path.is_absolute():
@@ -212,6 +213,12 @@ class Editor:
         self.status.saved = True
         with open(path, "r") as f:
             self.buffer = f.read()
+
+    def _handle_textinput(self, event: Event) -> None:
+        self._insert_text(event.text)
+        self._hshift_cursor(0)
+        self._vshift_cursor(0)
+        self.status.saved = False
 
     def _handle_keydown(self, event: Event) -> None:
 
